@@ -7,11 +7,10 @@ using System.Linq;
 
 public class CreateBoxes : MonoBehaviour
 {
+	static String DATADIR = "\\Users\\jenny\\dev\\data1\\";
 	static int debugPackageCountLimit = -1;
-	static int debugBoxCountLimit = -1;
-	// # of blocks or -1 to disable breakpoint
+	static int debugBoxCountLimit = -1;	// # of blocks or -1 to disable breakpoint
 	static float scaleForFontSize18_12 = 0.02f;
-	//static float scaleForFontSize12_8 = 0.03333f;
 	static float scale = scaleForFontSize18_12;
 	// ratio from pixels to in-game units. Depends on rerun of Java image generation.
 
@@ -26,7 +25,7 @@ public class CreateBoxes : MonoBehaviour
 		float initialX = 0;
 		float initialY = 0;
 		float initialZ = 0;
-		float spanZ = 40; // for package spacing of 50
+		float spanZ = 20;
 		float spanY = 15;
 		float x = 0;
 		float y = 0;
@@ -121,13 +120,22 @@ public class CreateBoxes : MonoBehaviour
 			GameObject packageCubeFloor = GameObject.CreatePrimitive (PrimitiveType.Cube);
 			packageCubeFloor.transform.position = new Vector3 (borders.transform.position.x - (spaceBorderWidth / 2f) - (xspacing/2f), 0f, borders.transform.position.z - (spaceBorderWidth /2f));
 			packageCubeFloor.transform.localScale = new Vector3 (borders.transform.localScale.x - spaceBorderWidth, 0.2f, borders.transform.localScale.z - spaceBorderWidth);
-			packageCubeFloor.name = "floor-" + this.packageName;
+			packageCubeFloor.name = "floor-" + this.packageName.Replace('/', '-');
 			packageCubeFloor.transform.SetParent (borders.transform);
 			packageCubeFloor.GetComponent<BoxCollider> ().enabled = false;
 
-			// Set material
-			//packageCubeFloor.GetComponent<Renderer> ().material.mainTexture = Resources.Load("Rocks 4") as Texture2D; // TODO: buggy
-			// TODO 2020: Set Material correctly
+			//			var resourceImagePath = DATADIR + packageCubeFloor.name + ".png";
+			//			Texture2D t2d = new Texture2D(1, 1, TextureFormat.RGB565, true);
+			//			Debug.Log("Loading texture from " + resourceImagePath);
+			//			t2d.anisoLevel = 0; // off for performance
+			//			t2d.LoadImage(File.ReadAllBytes(resourceImagePath));
+			//			UnityEditor.AssetDatabase.CreateAsset(t2d, "Assets/Textures/" + packageCubeFloor.name + ".png");
+
+			Material material = (Material)UnityEditor.AssetDatabase.LoadAssetAtPath("Assets\\Materials\\Marble_White.mat", typeof(Material));
+			
+			//UnityEditor.AssetDatabase.CreateAsset(material, "Assets/GeneratedMaterials/" + packageCubeFloor.name.Replace('/','-') + ".mat");
+			packageCubeFloor.GetComponent<Renderer>().material = material;
+			packageCubeFloor.GetComponent<Renderer>().material.mainTextureScale = new Vector2(borders.transform.localScale.x, borders.transform.localScale.z);
 
 			// Optimize lighting
 			packageCubeFloor.GetComponent<Renderer> ().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; // prettier and faster
@@ -178,32 +186,36 @@ public class CreateBoxes : MonoBehaviour
 		// PackageLayoutArea
 		Dictionary<string, PackageLayoutArea> areas = new Dictionary<string, PackageLayoutArea> ();
 
-		float xinitial = 0;
+		float xinitial = 5;
 		float zinitial = 0;
 		float xpos = xinitial;
 		float zpos = 0;
-		int xspacing = 5; // or xsize of greatest package unit, whichever is greater. 
+		int xspacing = 2; // or xsize of greatest package unit, whichever is greater. 
 		// xspacing uses increments of 5 with a minimum of 5.  Math later multiplies by the increment when a box exceeds what fits in its row.
-		int zspacing = 50;
+		int zspacing = 30;
 		int zMaxUnits = 6;
 		float maxXSizeInRow = 0;
 		//float maxZSizeInRow = 0;
 
 		int packages = 0;
+		int DEV_PACKAGE_COUNT = 600;
 
 
 		// Generate all the areas first, setting their files.
 		foreach (var filepath in files) {
-			Debug.Log("Parsing file " + filepath);
-			CodeBlock block = new CodeBlock (File.ReadAllLines (filepath), filepath); // arbitrary size so we can read the package name.
-			PackageLayoutArea area = null;
-			if (areas.ContainsKey (block.package)) {
-				area = areas [block.package];
-			} else {
-				area = new PackageLayoutArea (block.package);
-				areas [block.package] = area;
+			if (packages <= DEV_PACKAGE_COUNT)
+			{
+				//Debug.Log("Parsing file " + filepath);
+				CodeBlock block = new CodeBlock (File.ReadAllLines (filepath), filepath); // arbitrary size so we can read the package name.
+				PackageLayoutArea area = null;
+				if (areas.ContainsKey (block.package)) {
+					area = areas [block.package];
+				} else {
+					area = new PackageLayoutArea (block.package);
+					areas [block.package] = area;
+				}
+				area.addFile (filepath);
 			}
-			area.addFile (filepath);
 			packages++;
 		}
 
@@ -296,7 +308,7 @@ public class CreateBoxes : MonoBehaviour
 			// the ypos coming in is bottom-aligned already. ypos=0 puts bottom of box on the floor.
 
 			cube = GameObject.CreatePrimitive (PrimitiveType.Cube);
-			cube.name = "cube-" + classname;
+			cube.name = "cube-" + classname.Replace('/','-');
 			cube.transform.localScale = new Vector3 (xscale, yscale, zscale);
 			cube.transform.position = new Vector3 (xpos, ypos + 1, zpos);
 			cube.GetComponent<BoxCollider> ().enabled = false;
@@ -325,15 +337,16 @@ public class CreateBoxes : MonoBehaviour
 			// Texture2D(int width, int height, TextureFormat format, bool mipmap, bool linear)
 			// Using mipmaps improved the frame rate from 10-15 fps to 20-30 fps on dense renders.
 			// Not sure of the effects of differing texture color depths.  Mipmaps make frame rate more consistent and better though.
+
+			//Debug.Log("Loading texture from " + resourceImagePath);
 			Texture2D t2d = new Texture2D (1, 1, TextureFormat.RGB565, true);
-			Debug.Log("Loading texture from " + resourceImagePath);
 			t2d.anisoLevel = 0; // off for performance
 			t2d.LoadImage (File.ReadAllBytes (resourceImagePath));
-			UnityEditor.AssetDatabase.CreateAsset(t2d, "Assets/Textures/" + cube.name + ".png");
+			UnityEditor.AssetDatabase.CreateAsset(t2d, "Assets\\GeneratedTextures\\texture-" + Path.GetFileName(resourceImagePath) + ".asset"); 
 
 			Material material = new Material(Shader.Find("Standard"));
 			material.mainTexture = t2d;
-			UnityEditor.AssetDatabase.CreateAsset(material, "Assets/GeneratedMaterials/" + cube.name + ".mat");
+			UnityEditor.AssetDatabase.CreateAsset(material, "Assets\\GeneratedMaterials\\" + Path.GetFileName(resourceImagePath) + ".mat");
 
 			cube.GetComponent<Renderer>().material = material;
 			cube.GetComponent<Renderer> ().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; // prettier and faster
@@ -350,15 +363,33 @@ public class CreateBoxes : MonoBehaviour
 		Light lightComp = lightGameObject.AddComponent<Light>();
 		lightComp.color = Color.white;
 		lightComp.type = LightType.Directional;
+		lightComp.intensity = 3;
 		lightGameObject.transform.position = new Vector3(20, 10, 20);
-		lightGameObject.transform.rotation = Quaternion.Euler(45, -30, 0);
+		lightGameObject.transform.rotation = Quaternion.Euler(45, -20, 0);
 
 		GameObject lightGameObject2 = new GameObject("The Other Light");
 		Light lightComp2 = lightGameObject2.AddComponent<Light>();
 		lightComp2.color = Color.white;
+		lightComp2.intensity = 3;
 		lightComp2.type = LightType.Directional;
 		lightGameObject2.transform.position = new Vector3(-20, 10, -20);
-		lightGameObject2.transform.rotation = Quaternion.Euler(45, 30, 0);
+		lightGameObject2.transform.rotation = Quaternion.Euler(45, 20, 0);
+
+		int PLANE_SIZE = 60;
+		GameObject floor_plane = GameObject.CreatePrimitive(PrimitiveType.Plane);
+		floor_plane.transform.position = new Vector3(150, 0, 100);
+		floor_plane.transform.localScale = new Vector3(PLANE_SIZE, 1, PLANE_SIZE);
+		// Might still need to turn on the MeshCollider but maybe it's on by default.
+
+		Material material = (Material)UnityEditor.AssetDatabase.LoadAssetAtPath("Assets\\Materials\\Marble_Gray.mat", typeof(Material));
+		floor_plane.GetComponent<Renderer>().material = material;
+		floor_plane.GetComponent<Renderer>().material.mainTextureScale = new Vector2(PLANE_SIZE, PLANE_SIZE);
+		floor_plane.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; // prettier and faster
+		floor_plane.GetComponent<Renderer>().receiveShadows = false; // prettier and faster
+		floor_plane.GetComponent<MeshRenderer>().reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
+		floor_plane.GetComponent<MeshRenderer>().lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+
+		
 	}
 
 	// example code
@@ -429,10 +460,10 @@ public class CreateBoxes : MonoBehaviour
 
 		try {
 			UnityEditor.AssetDatabase.StartAssetEditing();
-			var filepaths = Directory.GetFiles ("/Users/jenny/dev/codevis/Assets/data/", "*.txt", SearchOption.AllDirectories);
+			var filepaths = Directory.GetFiles (DATADIR, "*.txt", SearchOption.AllDirectories);
 			createCameraAndLight();
 			// gridLayout (filepaths); // dummy layout for testing before I wrote a better algorithm.
-			layOutPackagesInWorld (filepaths); // real layout by package group
+			layOutPackagesInWorld(filepaths); // real layout by package group
 
 			Console.WriteLine ("{0} files found.", filepaths.Count ().ToString ());
 		} catch (UnauthorizedAccessException UAEx) {
