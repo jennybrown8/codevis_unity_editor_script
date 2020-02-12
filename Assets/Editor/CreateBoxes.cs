@@ -11,8 +11,8 @@ public class CreateBoxes : MonoBehaviour
 	static int debugPackageCountLimit = -1;
 	static int debugBoxCountLimit = -1;	// # of blocks or -1 to disable breakpoint
 	static float scaleForFontSize18_12 = 0.02f;
-	static float scale = scaleForFontSize18_12;
-	// ratio from pixels to in-game units. Depends on rerun of Java image generation.
+	static float scale = scaleForFontSize18_12;     // ratio from pixels to in-game units. Depends on rerun of Java image generation.
+	static float scalefactor = 0.1f;
 
 	/** 
 	 * Lays out a set of blocks which make up a single package, fixing the size of the block in
@@ -23,16 +23,16 @@ public class CreateBoxes : MonoBehaviour
 		List<string> files;
 		string packageName;
 		float initialX = 0;
-		float initialY = 0;
+		float initialY = 0.5f;
 		float initialZ = 0;
-		float spanZ = 20;
-		float spanY = 15;
+		float spanZ = 20 * scalefactor;
+		float spanY = 15 * scalefactor;
 		float x = 0;
 		float y = 0;
 		float z = 0;
-		float zspacing = 1f;
-		float xspacing = 10;
-		float yspacing = 1f;
+		float zspacing = 1f * scalefactor;
+		float xspacing = 5f * scalefactor;
+		float yspacing = 1f * scalefactor;
 		float maxX = 0; // for tracking max extents
 		float maxY = 0;
 		float maxZ = 0;
@@ -116,9 +116,9 @@ public class CreateBoxes : MonoBehaviour
 		void createPackageAreaFloor ()
 		{
 			// Create a cube to enclose the set. Leave a tiny border so we can see whether or not it bumps other cubes.
-			float spaceBorderWidth = 0.2f;
+			float spaceBorderWidth = 0.2f * scalefactor;
 			GameObject packageCubeFloor = GameObject.CreatePrimitive (PrimitiveType.Cube);
-			packageCubeFloor.transform.position = new Vector3 (borders.transform.position.x - (spaceBorderWidth / 2f) - (xspacing/2f), 0f, borders.transform.position.z - (spaceBorderWidth /2f));
+			packageCubeFloor.transform.position = new Vector3(borders.transform.position.x - (spaceBorderWidth / 2f) - (xspacing / 2f), initialY, borders.transform.position.z - (spaceBorderWidth / 2f)); ;
 			packageCubeFloor.transform.localScale = new Vector3 (borders.transform.localScale.x - spaceBorderWidth, 0.2f, borders.transform.localScale.z - spaceBorderWidth);
 			packageCubeFloor.name = "floor-" + this.packageName.Replace('/', '-');
 			packageCubeFloor.transform.SetParent (borders.transform);
@@ -131,7 +131,7 @@ public class CreateBoxes : MonoBehaviour
 			//			t2d.LoadImage(File.ReadAllBytes(resourceImagePath));
 			//			UnityEditor.AssetDatabase.CreateAsset(t2d, "Assets/Textures/" + packageCubeFloor.name + ".png");
 
-			Material material = (Material)UnityEditor.AssetDatabase.LoadAssetAtPath("Assets\\Materials\\Marble_White.mat", typeof(Material));
+			Material material = (Material)UnityEditor.AssetDatabase.LoadAssetAtPath("Assets\\Materials\\gray_marble.mat", typeof(Material));
 			
 			//UnityEditor.AssetDatabase.CreateAsset(material, "Assets/GeneratedMaterials/" + packageCubeFloor.name.Replace('/','-') + ".mat");
 			packageCubeFloor.GetComponent<Renderer>().material = material;
@@ -186,25 +186,20 @@ public class CreateBoxes : MonoBehaviour
 		// PackageLayoutArea
 		Dictionary<string, PackageLayoutArea> areas = new Dictionary<string, PackageLayoutArea> ();
 
-		float xinitial = 5;
+		float xinitial = 1;
 		float zinitial = 0;
 		float xpos = xinitial;
 		float zpos = 0;
-		int xspacing = 2; // or xsize of greatest package unit, whichever is greater. 
+		float xspacing = 2 * scalefactor; // or xsize of greatest package unit, whichever is greater. 
 		// xspacing uses increments of 5 with a minimum of 5.  Math later multiplies by the increment when a box exceeds what fits in its row.
-		int zspacing = 30;
-		int zMaxUnits = 6;
+		float zspacing = 30 * scalefactor;
+		int zMaxUnits = 15;
 		float maxXSizeInRow = 0;
 		//float maxZSizeInRow = 0;
-
 		int packages = 0;
-		int DEV_PACKAGE_COUNT = 600;
-
 
 		// Generate all the areas first, setting their files.
 		foreach (var filepath in files) {
-			if (packages <= DEV_PACKAGE_COUNT)
-			{
 				//Debug.Log("Parsing file " + filepath);
 				CodeBlock block = new CodeBlock (File.ReadAllLines (filepath), filepath); // arbitrary size so we can read the package name.
 				PackageLayoutArea area = null;
@@ -215,7 +210,6 @@ public class CreateBoxes : MonoBehaviour
 					areas [block.package] = area;
 				}
 				area.addFile (filepath);
-			}
 			packages++;
 		}
 
@@ -286,9 +280,10 @@ public class CreateBoxes : MonoBehaviour
 			for (var i = 0; i < lines.Count (); i++) {
 				methods.Add (lines [i].Trim ().Split ('\t') [1]);
 			}
-			xscale = 1f;
-			yscale = (float)(scale * height);
-			zscale = (float)(scale * width);
+			
+			xscale = 1f * scalefactor;
+			yscale = (float)(scale * height * scalefactor);
+			zscale = (float)(scale * width * scalefactor);
 
 		}
 
@@ -310,7 +305,7 @@ public class CreateBoxes : MonoBehaviour
 			cube = GameObject.CreatePrimitive (PrimitiveType.Cube);
 			cube.name = "cube-" + classname.Replace('/','-');
 			cube.transform.localScale = new Vector3 (xscale, yscale, zscale);
-			cube.transform.position = new Vector3 (xpos, ypos + 1, zpos);
+			cube.transform.position = new Vector3 (xpos, ypos + (1 * scalefactor), zpos);
 			cube.GetComponent<BoxCollider> ().enabled = false;
 
 			//Console.WriteLine ("Cube " + classname + " size " + xscale + "," + yscale + "," + zscale + "; pos " + xpos + "," + ypos + "," + zpos);
@@ -359,29 +354,29 @@ public class CreateBoxes : MonoBehaviour
 
 	static void createCameraAndLight()
 	{
-		GameObject lightGameObject = new GameObject("The Light");
+		GameObject lightGameObject = new GameObject("Light1");
 		Light lightComp = lightGameObject.AddComponent<Light>();
 		lightComp.color = Color.white;
 		lightComp.type = LightType.Directional;
-		lightComp.intensity = 3;
-		lightGameObject.transform.position = new Vector3(20, 10, 20);
-		lightGameObject.transform.rotation = Quaternion.Euler(45, -20, 0);
+		lightComp.intensity = 1;
+		lightGameObject.transform.position = new Vector3(20, 2, 10);
+		lightGameObject.transform.rotation = Quaternion.Euler(20, -90, 0);
 
-		GameObject lightGameObject2 = new GameObject("The Other Light");
+		GameObject lightGameObject2 = new GameObject("Light2");
 		Light lightComp2 = lightGameObject2.AddComponent<Light>();
 		lightComp2.color = Color.white;
-		lightComp2.intensity = 3;
+		lightComp2.intensity = 1;
 		lightComp2.type = LightType.Directional;
-		lightGameObject2.transform.position = new Vector3(-20, 10, -20);
-		lightGameObject2.transform.rotation = Quaternion.Euler(45, 20, 0);
+		lightGameObject2.transform.position = new Vector3(0, 2, 10);
+		lightGameObject2.transform.rotation = Quaternion.Euler(20, 90, 0);
 
-		int PLANE_SIZE = 60;
+		int PLANE_SIZE = 20;
 		GameObject floor_plane = GameObject.CreatePrimitive(PrimitiveType.Plane);
-		floor_plane.transform.position = new Vector3(150, 0, 100);
+		floor_plane.transform.position = new Vector3(10, 0, 10);
 		floor_plane.transform.localScale = new Vector3(PLANE_SIZE, 1, PLANE_SIZE);
 		// Might still need to turn on the MeshCollider but maybe it's on by default.
 
-		Material material = (Material)UnityEditor.AssetDatabase.LoadAssetAtPath("Assets\\Materials\\Marble_Gray.mat", typeof(Material));
+		Material material = (Material)UnityEditor.AssetDatabase.LoadAssetAtPath("Assets\\Materials\\LightHerringboneWood.mat", typeof(Material));
 		floor_plane.GetComponent<Renderer>().material = material;
 		floor_plane.GetComponent<Renderer>().material.mainTextureScale = new Vector2(PLANE_SIZE, PLANE_SIZE);
 		floor_plane.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; // prettier and faster
@@ -391,68 +386,6 @@ public class CreateBoxes : MonoBehaviour
 
 		
 	}
-
-	// example code
-	static void circleOfSpheres ()
-	{
-		int numberOfObjects = 20;
-		float radius = 5f;
-		GameObject prefab = GameObject.CreatePrimitive (PrimitiveType.Sphere);
-		for (int i = 0; i < numberOfObjects; i++) {
-			float angle = i * Mathf.PI * 2 / numberOfObjects;
-			Vector3 pos = new Vector3 (Mathf.Cos (angle), 1, Mathf.Sin (angle)) * radius;
-			Instantiate (prefab, pos, Quaternion.identity);
-		}
-		prefab.SetActive (false);
-	}
-
-	// example code
-	static void wallOfBoxes ()
-	{
-		for (int y = 0; y < 5; y++) {
-			for (int x = 0; x < 5; x++) {
-				GameObject cube = GameObject.CreatePrimitive (PrimitiveType.Cube);
-				//cube.AddComponent<Rigidbody>();
-				cube.transform.position = new Vector3 (x * 2, y * 2, 20);
-			}
-		}
-	}
-
-	static void gridLayout (string[] files)
-	{
-		int initialX = -40;
-		int initialY = -30;
-		int initialZ = -100;
-		int maxY = 80;
-		float x = initialX;
-		float y = initialY;
-		float z = initialZ;
-		int boxCount = 0;
-		float rowMaxY = 0;
-		foreach (var f in files) {
-			CodeBlock block = new CodeBlock (File.ReadAllLines (f), f);
-			block.renderBlock (x, y, z);
-			rowMaxY = Math.Max (rowMaxY, block.cube.transform.localScale.y);
-			z += block.cube.transform.localScale.z + 3;
-			if (z > -1 * initialZ) {
-				z = initialZ;
-				y += rowMaxY + 1;
-				rowMaxY = 0;
-			}
-			if (y > maxY) {
-				x += block.cube.transform.localScale.x + 10;
-				z = initialZ;
-				y = initialY;
-				rowMaxY = 0;
-			}
-			boxCount++;
-			if (debugBoxCountLimit != -1 && boxCount > debugBoxCountLimit) {
-				break;
-				// don't overload video memory on my macbook :)
-			}
-		}
-	}
-
 
 	public static void createCodeBlocks ()
 	{
